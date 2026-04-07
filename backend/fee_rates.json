@@ -1,0 +1,12 @@
+{
+  "crypto": 0.072,
+  "sports": 0.030,
+  "politics": 0.040,
+  "finance": 0.040,
+  "tech": 0.040,
+  "economics": 0.050,
+  "culture": 0.050,
+  "weather": 0.050,
+  "geopolitical": 0.0,
+  "_default": 0.040
+}

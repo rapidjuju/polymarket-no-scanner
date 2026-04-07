@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(npm install:*)",
+      "Bash(pip3 --version)",
+      "Bash(python -m pip install -r requirements.txt)",
+      "Bash(curl -s http://127.0.0.1:8000/api/scanner)",
+      "Bash(python -m json.tool)",
+      "Bash(python -m uvicorn app.main:app --host 127.0.0.1 --port 8000)",
+      "Bash(curl -s \"https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=5\")",
+      "Bash(curl -s \"https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=10&order=volume&ascending=false\")",
+      "Bash(python -c \":*)",
+      "Bash(taskkill //F //PID 43468)",
+      "Bash(npm run:*)",
+      "Bash(curl -s http://localhost:5173/)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s http://localhost:5173/api/scanner)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f''''{len\\(d\\)} items via frontend proxy''''\\)\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f''''{len\\(d\\)} opportunities serving''''\\)\")",
+      "Bash(tasklist)",
+      "Bash(python -c \"from app.engine.scanner import refresh_scanner; print\\(''OK''\\)\")",
+      "Bash(taskkill //F //PID 36076)",
+      "Bash(python -c ':*)",
+      "Bash(gh auth:*)",
+      "Bash(where gh:*)",
+      "Read(//c/Program Files/GitHub CLI/**)",
+      "Read(//c/Users/Gruener Julius/AppData/Local/GitHub CLI/**)",
+      "Bash(git config:*)"
+    ]
+  }
+}
