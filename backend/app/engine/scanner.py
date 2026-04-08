@@ -8,7 +8,7 @@ from pathlib import Path
 from app.clients.clob import CLOBClient
 from app.clients.gamma import GammaClient
 from app.config import settings
-from app.models import NoScannerOpportunity
+from app.models import ScannerOpportunity
 
 logger = logging.getLogger(__name__)
 
@@ -200,17 +200,17 @@ def _get_fee_rate(category: str) -> float:
 
 
 def compute_opportunity(
-    market: dict, book: dict, clob_client: CLOBClient
-) -> NoScannerOpportunity | None:
-    """Compute NO-share opportunity metrics for a single market."""
+    market: dict, book: dict, clob_client: CLOBClient, side: str = "NO"
+) -> ScannerOpportunity | None:
+    """Compute opportunity metrics for buying a cheap share on the given side."""
     try:
         outcome_prices = market["outcome_prices"]
         yes_sticker = outcome_prices[0]
         no_sticker = outcome_prices[1] if len(outcome_prices) > 1 else 1.0 - yes_sticker
 
-        # Get actual NO ask from order book
-        no_ask = clob_client.get_best_ask(book)
-        if no_ask is None or no_ask <= 0 or no_ask >= 1:
+        # Get actual ask from order book for this side
+        ask = clob_client.get_best_ask(book)
+        if ask is None or ask <= 0 or ask >= 1:
             return None
 
         # Parse expiry
@@ -229,17 +229,17 @@ def compute_opportunity(
             return None
 
         # Gross return (before fees)
-        gross_return = (1.0 - no_ask) / no_ask
+        gross_return = (1.0 - ask) / ask
 
         # Fee calculation using feeType from the API
         category = _classify_category(
             market.get("fee_type", ""), market.get("slug", ""), market.get("question", "")
         )
         fee_rate = _get_fee_rate(category)
-        fee_per_share = fee_rate * no_ask * (1.0 - no_ask)
+        fee_per_share = fee_rate * ask * (1.0 - ask)
 
         # Net return (after fees on entry)
-        effective_cost = no_ask + fee_per_share
+        effective_cost = ask + fee_per_share
         if effective_cost >= 1.0:
             return None
         net_return = (1.0 - effective_cost) / effective_cost
@@ -265,14 +265,15 @@ def compute_opportunity(
         # Order book impact simulation ($1K buy)
         impact = clob_client.simulate_buy(book, 1000.0)
 
-        return NoScannerOpportunity(
+        return ScannerOpportunity(
             market_id=market["id"],
             question=market["question"],
             end_date=end_date_str,
             category=category,
+            side=side,
             yes_sticker_price=yes_sticker,
             no_sticker_price=no_sticker,
-            no_ask_price=no_ask,
+            ask_price=ask,
             gross_return_pct=round(gross_return * 100, 2),
             net_return_pct=round(net_return * 100, 2),
             days_to_expiry=days,
@@ -293,35 +294,53 @@ def compute_opportunity(
 
 async def refresh_scanner(
     gamma_client: GammaClient, clob_client: CLOBClient
-) -> list[NoScannerOpportunity]:
-    """Full scan: fetch markets, get order books, compute opportunities."""
-    logger.info("Starting NO scanner refresh...")
+) -> list[ScannerOpportunity]:
+    """Full scan: fetch markets, get order books, compute opportunities for both sides."""
+    logger.info("Starting scanner refresh...")
 
     markets = await gamma_client.get_all_active_markets(min_volume=settings.min_market_volume)
     logger.info(f"Got {len(markets)} active markets, fetching CLOB books...")
 
-    # Collect NO token IDs
-    token_map: dict[str, dict] = {}  # no_token_id -> market
+    # Collect both YES and NO token IDs
+    token_map: dict[str, tuple[dict, str]] = {}  # token_id -> (market, side)
     for m in markets:
+        yes_token = m["clob_token_ids"][0]
         no_token = m["clob_token_ids"][1]
-        token_map[no_token] = m
+        token_map[yes_token] = (m, "YES")
+        token_map[no_token] = (m, "NO")
 
     # Fetch all order books (throttled)
     books = await clob_client.fetch_books_throttled(list(token_map.keys()))
     logger.info(f"Got {len(books)} order books")
 
-    # Compute opportunities
-    opportunities: list[NoScannerOpportunity] = []
-    for no_token, market in token_map.items():
-        book = books.get(no_token)
+    # Compute opportunities — for each market, pick the side closer to 100¢
+    # (high-probability bet, small but likely return)
+    opportunities: list[ScannerOpportunity] = []
+    # Group by market to pick best side
+    market_opps: dict[str, list[ScannerOpportunity]] = {}
+    for token_id, (market, side) in token_map.items():
+        book = books.get(token_id)
         if not book:
             continue
-        opp = compute_opportunity(market, book, clob_client)
+        opp = compute_opportunity(market, book, clob_client, side=side)
         if opp:
-            opportunities.append(opp)
+            mid = opp.market_id
+            if mid not in market_opps:
+                market_opps[mid] = []
+            market_opps[mid].append(opp)
+
+    for mid, opps in market_opps.items():
+        if len(opps) == 1:
+            # Only one side available — keep it if it's closer to 100¢
+            if opps[0].ask_price >= 0.5:
+                opportunities.append(opps[0])
+        else:
+            # Pick the side with the higher ask (closer to $1 / 100¢)
+            best = max(opps, key=lambda o: o.ask_price)
+            opportunities.append(best)
 
     # Sort by annualized excess return descending
     opportunities.sort(key=lambda o: o.annualized_excess_return_pct, reverse=True)
 
-    logger.info(f"Scanner found {len(opportunities)} NO opportunities")
+    logger.info(f"Scanner found {len(opportunities)} opportunities (high-prob side per market)")
     return opportunities
