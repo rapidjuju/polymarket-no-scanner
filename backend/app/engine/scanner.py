@@ -292,51 +292,67 @@ def compute_opportunity(
         return None
 
 
+def _flip_book(book: dict) -> dict:
+    """Derive the NO-side order book from the YES-side book.
+
+    Polymarket's CLOB mirrors the NO book from the YES book:
+      NO asks = 1 - YES bids  (buying NO = selling YES)
+      NO bids = 1 - YES asks  (selling NO = buying YES)
+    So we only need to fetch the YES book and flip it for the NO side.
+    """
+    yes_bids = book.get("bids", [])
+    yes_asks = book.get("asks", [])
+    return {
+        "asks": [{"price": str(round(1.0 - float(b["price"]), 4)), "size": b["size"]} for b in yes_bids],
+        "bids": [{"price": str(round(1.0 - float(a["price"]), 4)), "size": a["size"]} for a in yes_asks],
+    }
+
+
 async def refresh_scanner(
     gamma_client: GammaClient, clob_client: CLOBClient
 ) -> list[ScannerOpportunity]:
-    """Full scan: fetch markets, get order books, compute opportunities for both sides."""
+    """Full scan: fetch markets, get order books, compute opportunities.
+
+    We only fetch the YES (first) token's order book, because Polymarket's
+    CLOB mirrors the NO book from the YES book (NO asks = 1 - YES bids).
+    Using the real YES book avoids phantom price discrepancies.
+    """
     logger.info("Starting scanner refresh...")
 
     markets = await gamma_client.get_all_active_markets(min_volume=settings.min_market_volume)
     logger.info(f"Got {len(markets)} active markets, fetching CLOB books...")
 
-    # Collect both YES and NO token IDs
-    token_map: dict[str, tuple[dict, str]] = {}  # token_id -> (market, side)
+    # Only fetch YES (first) token books
+    yes_token_map: dict[str, dict] = {}  # yes_token_id -> market
     for m in markets:
         yes_token = m["clob_token_ids"][0]
-        no_token = m["clob_token_ids"][1]
-        token_map[yes_token] = (m, "YES")
-        token_map[no_token] = (m, "NO")
+        yes_token_map[yes_token] = m
 
-    # Fetch all order books (throttled)
-    books = await clob_client.fetch_books_throttled(list(token_map.keys()))
+    books = await clob_client.fetch_books_throttled(list(yes_token_map.keys()))
     logger.info(f"Got {len(books)} order books")
 
-    # Compute opportunities — for each market, pick the side closer to 100¢
-    # (high-probability bet, small but likely return)
+    # For each market, compute both YES and NO opportunities from the same book,
+    # then pick the side closer to 100¢
     opportunities: list[ScannerOpportunity] = []
-    # Group by market to pick best side
-    market_opps: dict[str, list[ScannerOpportunity]] = {}
-    for token_id, (market, side) in token_map.items():
-        book = books.get(token_id)
-        if not book:
+    for yes_token, market in yes_token_map.items():
+        yes_book = books.get(yes_token)
+        if not yes_book:
             continue
-        opp = compute_opportunity(market, book, clob_client, side=side)
-        if opp:
-            mid = opp.market_id
-            if mid not in market_opps:
-                market_opps[mid] = []
-            market_opps[mid].append(opp)
 
-    for mid, opps in market_opps.items():
-        if len(opps) == 1:
-            # Only one side available — keep it if it's closer to 100¢
-            if opps[0].ask_price >= 0.5:
-                opportunities.append(opps[0])
+        no_book = _flip_book(yes_book)
+
+        yes_opp = compute_opportunity(market, yes_book, clob_client, side="YES")
+        no_opp = compute_opportunity(market, no_book, clob_client, side="NO")
+
+        # Pick the side closer to 100¢ (higher ask = more likely outcome)
+        candidates = [o for o in [yes_opp, no_opp] if o is not None]
+        if not candidates:
+            continue
+        if len(candidates) == 1:
+            if candidates[0].ask_price >= 0.5:
+                opportunities.append(candidates[0])
         else:
-            # Pick the side with the higher ask (closer to $1 / 100¢)
-            best = max(opps, key=lambda o: o.ask_price)
+            best = max(candidates, key=lambda o: o.ask_price)
             opportunities.append(best)
 
     # Sort by annualized excess return descending
