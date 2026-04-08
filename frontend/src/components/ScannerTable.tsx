@@ -1,15 +1,15 @@
 import { useState, useMemo } from 'react';
 import { Target } from 'lucide-react';
-import type { NoScannerOpportunity } from '../lib/types';
+import type { ScannerOpportunity } from '../lib/types';
 
 interface ScannerTableProps {
-  opportunities: NoScannerOpportunity[];
+  opportunities: ScannerOpportunity[];
 }
 
 type SortKey =
   | 'yes_sticker_price'
   | 'no_sticker_price'
-  | 'no_ask_price'
+  | 'ask_price'
   | 'gross_return_pct'
   | 'net_return_pct'
   | 'days_to_expiry'
@@ -23,7 +23,8 @@ type SortKey =
 export function ScannerTable({ opportunities }: ScannerTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('annualized_excess_return_pct');
   const [sortAsc, setSortAsc] = useState(false);
-  const [minNoPrice, setMinNoPrice] = useState<number>(0);
+  const [minPrice, setMinPrice] = useState<number>(0);
+  const [minYesPrice, setMinYesPrice] = useState<number>(0);
   const [minVolume, setMinVolume] = useState<number>(0);
   const [minDepth, setMinDepth] = useState<number>(0);
 
@@ -34,6 +35,9 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
 
   // Track which categories are enabled (all on by default)
   const [enabledCategories, setEnabledCategories] = useState<Set<string> | null>(null);
+
+  // Side filter: "ALL", "YES", or "NO"
+  const [sideFilter, setSideFilter] = useState<string>('ALL');
 
   // Resolve: null = all enabled, otherwise use the set
   const activeCats = enabledCategories ?? new Set(allCategories);
@@ -61,8 +65,14 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
   const filtered = useMemo(() => {
     let data = opportunities;
     data = data.filter((o) => activeCats.has(o.category));
-    if (minNoPrice > 0) {
-      data = data.filter((o) => o.no_ask_price * 100 >= minNoPrice);
+    if (sideFilter !== 'ALL') {
+      data = data.filter((o) => o.side === sideFilter);
+    }
+    if (minPrice > 0) {
+      data = data.filter((o) => o.ask_price * 100 >= minPrice);
+    }
+    if (minYesPrice > 0) {
+      data = data.filter((o) => o.yes_sticker_price * 100 >= minYesPrice);
     }
     if (minVolume > 0) {
       data = data.filter((o) => o.volume >= minVolume);
@@ -74,7 +84,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
       const mul = sortAsc ? 1 : -1;
       return mul * ((a[sortKey] as number) - (b[sortKey] as number));
     });
-  }, [opportunities, activeCats, minNoPrice, minVolume, minDepth, sortKey, sortAsc]);
+  }, [opportunities, activeCats, sideFilter, minPrice, minYesPrice, minVolume, minDepth, sortKey, sortAsc]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -124,6 +134,13 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
   const inputClass =
     'bg-[var(--hl-bg)] border border-[var(--hl-border)] text-[var(--hl-text)] text-[10px] px-2 py-1 w-20 font-mono focus:outline-none focus:border-[var(--hl-accent)]';
 
+  const sideButtonClass = (value: string) =>
+    `px-2 py-1 text-[9px] font-medium whitespace-nowrap transition-colors ${
+      sideFilter === value
+        ? 'bg-[var(--hl-accent)]/15 text-[var(--hl-accent)] border border-[var(--hl-accent)]/30'
+        : 'text-[var(--hl-text-dim)] hover:text-[var(--hl-text)] hover:bg-[var(--hl-surface2)] border border-transparent'
+    }`;
+
   return (
     <div
       className="flex flex-col h-full bg-[var(--hl-surface)] border border-[var(--hl-border)] overflow-hidden"
@@ -133,7 +150,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[var(--hl-border)]">
         <Target className="w-3.5 h-3.5 text-[var(--hl-yellow)]" />
         <h2 className="text-xs font-semibold text-[var(--hl-text)]">
-          NO Share Scanner
+          Share Scanner
         </h2>
         <span className="ml-auto text-[10px] text-[var(--hl-text-dim)]">
           {filtered.length} of {opportunities.length} opportunities
@@ -142,6 +159,20 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
 
       {/* Filters row */}
       <div className="flex items-center gap-4 px-3 py-2 border-b border-[var(--hl-border)]">
+        {/* Side filter */}
+        <div className="flex gap-1">
+          {['ALL', 'YES', 'NO'].map((value) => (
+            <button
+              key={value}
+              onClick={() => setSideFilter(value)}
+              className={sideButtonClass(value)}
+              style={{ borderRadius: 'var(--hl-radius)' }}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+
         {/* Category toggles */}
         <div className="flex gap-1 overflow-x-auto">
           <button
@@ -177,19 +208,38 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          {/* Min NO price filter */}
+          {/* Min price filter */}
           <div className="flex items-center gap-1.5">
             <label className="text-[9px] text-[var(--hl-text-dim)] whitespace-nowrap">
-              Min NO price
+              Min price
             </label>
             <input
               type="number"
               min={0}
               max={99}
               step={5}
-              value={minNoPrice || ''}
+              value={minPrice || ''}
               placeholder="0"
-              onChange={(e) => setMinNoPrice(Number(e.target.value) || 0)}
+              onChange={(e) => setMinPrice(Number(e.target.value) || 0)}
+              className={inputClass}
+              style={{ borderRadius: 'var(--hl-radius)' }}
+            />
+            <span className="text-[9px] text-[var(--hl-text-dim)]">¢</span>
+          </div>
+
+          {/* Min YES price filter */}
+          <div className="flex items-center gap-1.5">
+            <label className="text-[9px] text-[var(--hl-text-dim)] whitespace-nowrap">
+              Min YES
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={99}
+              step={5}
+              value={minYesPrice || ''}
+              placeholder="0"
+              onChange={(e) => setMinYesPrice(Number(e.target.value) || 0)}
               className={inputClass}
               style={{ borderRadius: 'var(--hl-radius)' }}
             />
@@ -251,9 +301,10 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
             <thead className="sticky top-0 bg-[var(--hl-surface)] z-10">
               <tr className="border-b border-[var(--hl-border)]">
                 <th className={th}>Market</th>
+                <th className={th}>Side</th>
                 <SortHeader label="Sticker YES" field="yes_sticker_price" />
                 <SortHeader label="Sticker NO" field="no_sticker_price" />
-                <SortHeader label="NO Ask" field="no_ask_price" />
+                <SortHeader label="Ask" field="ask_price" />
                 <SortHeader label="Gross %" field="gross_return_pct" />
                 <SortHeader label="Net %" field="net_return_pct" />
                 <SortHeader label="Days" field="days_to_expiry" />
@@ -269,7 +320,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
             <tbody>
               {filtered.map((o, i) => (
                 <tr
-                  key={`${o.market_id}-${i}`}
+                  key={`${o.market_id}-${o.side}-${i}`}
                   className="border-b border-[var(--hl-border)]/50 hover:bg-[var(--hl-surface2)]/50 transition-colors"
                 >
                   {/* Market */}
@@ -292,6 +343,19 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
                     </div>
                   </td>
 
+                  {/* Side */}
+                  <td className="px-3 py-2">
+                    <span
+                      className={`text-[10px] font-bold ${
+                        o.side === 'YES'
+                          ? 'text-[var(--hl-green)]'
+                          : 'text-[var(--hl-red)]'
+                      }`}
+                    >
+                      {o.side}
+                    </span>
+                  </td>
+
                   {/* Sticker YES */}
                   <td className="px-3 py-2 font-mono text-[11px]">
                     <span className="text-[var(--hl-blue)]">
@@ -304,10 +368,10 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
                     {(o.no_sticker_price * 100).toFixed(1)}%
                   </td>
 
-                  {/* NO Ask */}
+                  {/* Ask */}
                   <td className="px-3 py-2 font-mono text-[11px]">
                     <span className="text-[var(--hl-purple)]">
-                      {(o.no_ask_price * 100).toFixed(1)}¢
+                      {(o.ask_price * 100).toFixed(1)}¢
                     </span>
                   </td>
 
@@ -358,7 +422,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
                   {/* $1K Slippage */}
                   <td
                     className={`px-3 py-2 font-mono text-[11px] ${impactColor(o.slippage_bps)}`}
-                    title={`Avg fill price vs best ask if you buy $1K of NO shares. ${o.pct_filled < 100 ? `Only ${o.pct_filled}% filled — not enough liquidity for full $1K` : 'Full fill'}`}
+                    title={`Avg fill price vs best ask if you buy $1K of ${o.side} shares. ${o.pct_filled < 100 ? `Only ${o.pct_filled}% filled — not enough liquidity for full $1K` : 'Full fill'}`}
                   >
                     {o.slippage_bps.toFixed(0)}bp
                     {o.pct_filled < 100 && (
