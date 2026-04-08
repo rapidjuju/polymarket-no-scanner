@@ -23,8 +23,8 @@ type SortKey =
 export function ScannerTable({ opportunities }: ScannerTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('annualized_excess_return_pct');
   const [sortAsc, setSortAsc] = useState(false);
-  const [minPrice, setMinPrice] = useState<number>(0);
-  const [minYesPrice, setMinYesPrice] = useState<number>(0);
+  const [minSticker, setMinSticker] = useState<number>(0);
+  const [maxSticker, setMaxSticker] = useState<number>(0);
   const [minVolume, setMinVolume] = useState<number>(0);
   const [minDepth, setMinDepth] = useState<number>(0);
 
@@ -68,11 +68,13 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
     if (sideFilter !== 'ALL') {
       data = data.filter((o) => o.side === sideFilter);
     }
-    if (minPrice > 0) {
-      data = data.filter((o) => o.ask_price * 100 >= minPrice);
-    }
-    if (minYesPrice > 0) {
-      data = data.filter((o) => o.yes_sticker_price * 100 >= minYesPrice);
+    if (minSticker > 0 || maxSticker > 0) {
+      data = data.filter((o) => {
+        const sticker = (o.side === 'YES' ? o.yes_sticker_price : o.no_sticker_price) * 100;
+        if (minSticker > 0 && sticker < minSticker) return false;
+        if (maxSticker > 0 && sticker > maxSticker) return false;
+        return true;
+      });
     }
     if (minVolume > 0) {
       data = data.filter((o) => o.volume >= minVolume);
@@ -84,7 +86,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
       const mul = sortAsc ? 1 : -1;
       return mul * ((a[sortKey] as number) - (b[sortKey] as number));
     });
-  }, [opportunities, activeCats, sideFilter, minPrice, minYesPrice, minVolume, minDepth, sortKey, sortAsc]);
+  }, [opportunities, activeCats, sideFilter, minSticker, maxSticker, minVolume, minDepth, sortKey, sortAsc]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -208,38 +210,31 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          {/* Min price filter */}
+          {/* Sticker price range filter */}
           <div className="flex items-center gap-1.5">
             <label className="text-[9px] text-[var(--hl-text-dim)] whitespace-nowrap">
-              Min ask
+              Sticker
             </label>
             <input
               type="number"
               min={0}
               max={99}
               step={5}
-              value={minPrice || ''}
-              placeholder="0"
-              onChange={(e) => setMinPrice(Number(e.target.value) || 0)}
+              value={minSticker || ''}
+              placeholder="min"
+              onChange={(e) => setMinSticker(Number(e.target.value) || 0)}
               className={inputClass}
               style={{ borderRadius: 'var(--hl-radius)' }}
             />
-            <span className="text-[9px] text-[var(--hl-text-dim)]">¢</span>
-          </div>
-
-          {/* Min YES price filter */}
-          <div className="flex items-center gap-1.5">
-            <label className="text-[9px] text-[var(--hl-text-dim)] whitespace-nowrap">
-              Min YES
-            </label>
+            <span className="text-[9px] text-[var(--hl-text-dim)]">–</span>
             <input
               type="number"
               min={0}
-              max={99}
+              max={100}
               step={5}
-              value={minYesPrice || ''}
-              placeholder="0"
-              onChange={(e) => setMinYesPrice(Number(e.target.value) || 0)}
+              value={maxSticker || ''}
+              placeholder="max"
+              onChange={(e) => setMaxSticker(Number(e.target.value) || 0)}
               className={inputClass}
               style={{ borderRadius: 'var(--hl-radius)' }}
             />
