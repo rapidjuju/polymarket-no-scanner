@@ -302,9 +302,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
               <tr className="border-b border-[var(--hl-border)]">
                 <th className={th}>Market</th>
                 <th className={th}>Side</th>
-                <SortHeader label="YES Odds" field="yes_sticker_price" />
-                <SortHeader label="NO Odds" field="no_sticker_price" />
-                <th className={`${th} whitespace-nowrap`}>Polymarket</th>
+                <SortHeader label="Sticker" field="yes_sticker_price" />
                 <SortHeader label="Ask" field="ask_price" />
                 <SortHeader label="Gross %" field="gross_return_pct" />
                 <SortHeader label="Net %" field="net_return_pct" />
@@ -357,23 +355,11 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
                     </span>
                   </td>
 
-                  {/* Sticker YES */}
-                  <td className="px-3 py-2 font-mono text-[11px]">
-                    <span className="text-[var(--hl-blue)]">
-                      {(o.yes_sticker_price * 100).toFixed(1)}%
-                    </span>
-                  </td>
-
-                  {/* Sticker NO */}
-                  <td className="px-3 py-2 font-mono text-[11px] text-[var(--hl-text-dim)]">
-                    {(o.no_sticker_price * 100).toFixed(1)}%
-                  </td>
-
-                  {/* Polymarket displayed price for chosen side */}
+                  {/* Sticker — Polymarket displayed price for the chosen side */}
                   <td className="px-3 py-2 font-mono text-[11px]"
-                    title="Polymarket's displayed price for this side (midpoint/last trade)"
+                    title={`Polymarket's displayed ${o.side} price (midpoint/last trade)`}
                   >
-                    <span className="text-[var(--hl-text-dim)]">
+                    <span className="text-[var(--hl-blue)]">
                       {((o.side === 'YES' ? o.yes_sticker_price : o.no_sticker_price) * 100).toFixed(1)}¢
                     </span>
                   </td>
@@ -477,7 +463,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
 
       {/* Footer */}
       <div className="flex items-center gap-4 px-4 py-1.5 border-t border-[var(--hl-border)] text-[9px] text-[var(--hl-text-dim)]">
-        <span>Polymarket = displayed price (mid/last trade)</span>
+        <span>Sticker = Polymarket displayed price for chosen side</span>
         <span>Ask = real best ask from order book</span>
         <span>$1K Slip = avg fill cost vs best ask for a $1,000 buy (basis points)</span>
         <span>$1K Impact = how much best ask moves after your order</span>
