@@ -211,7 +211,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
           {/* Min price filter */}
           <div className="flex items-center gap-1.5">
             <label className="text-[9px] text-[var(--hl-text-dim)] whitespace-nowrap">
-              Min buy price
+              Min ask
             </label>
             <input
               type="number"
@@ -304,7 +304,8 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
                 <th className={th}>Side</th>
                 <SortHeader label="YES Odds" field="yes_sticker_price" />
                 <SortHeader label="NO Odds" field="no_sticker_price" />
-                <SortHeader label="Buy Price" field="ask_price" />
+                <th className={`${th} whitespace-nowrap`}>Polymarket</th>
+                <SortHeader label="Ask" field="ask_price" />
                 <SortHeader label="Gross %" field="gross_return_pct" />
                 <SortHeader label="Net %" field="net_return_pct" />
                 <SortHeader label="Days" field="days_to_expiry" />
@@ -368,8 +369,19 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
                     {(o.no_sticker_price * 100).toFixed(1)}%
                   </td>
 
-                  {/* Ask */}
-                  <td className="px-3 py-2 font-mono text-[11px]">
+                  {/* Polymarket displayed price for chosen side */}
+                  <td className="px-3 py-2 font-mono text-[11px]"
+                    title="Polymarket's displayed price for this side (midpoint/last trade)"
+                  >
+                    <span className="text-[var(--hl-text-dim)]">
+                      {((o.side === 'YES' ? o.yes_sticker_price : o.no_sticker_price) * 100).toFixed(1)}¢
+                    </span>
+                  </td>
+
+                  {/* Real ask from order book */}
+                  <td className="px-3 py-2 font-mono text-[11px]"
+                    title="Actual best ask from the CLOB order book — what you'd really pay"
+                  >
                     <span className="text-[var(--hl-purple)]">
                       {(o.ask_price * 100).toFixed(1)}¢
                     </span>
@@ -465,7 +477,8 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
 
       {/* Footer */}
       <div className="flex items-center gap-4 px-4 py-1.5 border-t border-[var(--hl-border)] text-[9px] text-[var(--hl-text-dim)]">
-        <span>Buy Price = actual ask from order book for the chosen side</span>
+        <span>Polymarket = displayed price (mid/last trade)</span>
+        <span>Ask = real best ask from order book</span>
         <span>$1K Slip = avg fill cost vs best ask for a $1,000 buy (basis points)</span>
         <span>$1K Impact = how much best ask moves after your order</span>
         <span className="text-[var(--hl-green)]">0bp = zero slippage</span>
