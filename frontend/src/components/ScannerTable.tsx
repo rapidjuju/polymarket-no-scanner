@@ -211,7 +211,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
           {/* Min price filter */}
           <div className="flex items-center gap-1.5">
             <label className="text-[9px] text-[var(--hl-text-dim)] whitespace-nowrap">
-              Min price
+              Min buy price
             </label>
             <input
               type="number"
@@ -302,9 +302,9 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
               <tr className="border-b border-[var(--hl-border)]">
                 <th className={th}>Market</th>
                 <th className={th}>Side</th>
-                <SortHeader label="Sticker YES" field="yes_sticker_price" />
-                <SortHeader label="Sticker NO" field="no_sticker_price" />
-                <SortHeader label="Ask" field="ask_price" />
+                <SortHeader label="YES Odds" field="yes_sticker_price" />
+                <SortHeader label="NO Odds" field="no_sticker_price" />
+                <SortHeader label="Buy Price" field="ask_price" />
                 <SortHeader label="Gross %" field="gross_return_pct" />
                 <SortHeader label="Net %" field="net_return_pct" />
                 <SortHeader label="Days" field="days_to_expiry" />
@@ -465,6 +465,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
 
       {/* Footer */}
       <div className="flex items-center gap-4 px-4 py-1.5 border-t border-[var(--hl-border)] text-[9px] text-[var(--hl-text-dim)]">
+        <span>Buy Price = actual ask from order book for the chosen side</span>
         <span>$1K Slip = avg fill cost vs best ask for a $1,000 buy (basis points)</span>
         <span>$1K Impact = how much best ask moves after your order</span>
         <span className="text-[var(--hl-green)]">0bp = zero slippage</span>
