@@ -251,13 +251,14 @@ def compute_opportunity(
             annualized_net = 999.99  # 99,999%
         annualized_net_pct = min(annualized_net * 100, 99999.0)
 
-        # Daily return (simple, non-compounding — useful for comparing across time horizons)
-        daily_return_pct = (net_return / days) * 100
-
         # Excess return over risk-free, plus holding reward if eligible
         reward_eligible = bool(market.get("holding_rewards_enabled"))
         reward = settings.holding_reward_rate if reward_eligible else 0.0
         annualized_excess_pct = annualized_net_pct - (settings.risk_free_rate * 100) + (reward * 100)
+
+        # Bid-ask spread for the chosen side
+        best_bid = clob_client.get_best_bid(book)
+        bid_ask_spread_cents = round((ask - best_bid) * 100, 2) if best_bid is not None else 0.0
 
         # Liquidity
         liquidity = clob_client.get_ask_depth(book)
@@ -279,7 +280,8 @@ def compute_opportunity(
             days_to_expiry=days,
             annualized_net_return_pct=round(annualized_net_pct, 2),
             annualized_excess_return_pct=round(annualized_excess_pct, 2),
-            daily_return_pct=round(daily_return_pct, 4),
+            slug=market.get("slug", ""),
+            bid_ask_spread_cents=bid_ask_spread_cents,
             liquidity_usd=round(liquidity, 2),
             volume=market.get("volume", 0),
             slippage_bps=impact["slippage_bps"],

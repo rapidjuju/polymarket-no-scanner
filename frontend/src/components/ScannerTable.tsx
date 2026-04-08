@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Target } from 'lucide-react';
+import { Target, ExternalLink } from 'lucide-react';
 import type { ScannerOpportunity } from '../lib/types';
 
 interface ScannerTableProps {
@@ -13,7 +13,7 @@ type SortKey =
   | 'gross_return_pct'
   | 'net_return_pct'
   | 'days_to_expiry'
-  | 'daily_return_pct'
+  | 'bid_ask_spread_cents'
   | 'annualized_excess_return_pct'
   | 'liquidity_usd'
   | 'volume'
@@ -302,7 +302,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
                 <SortHeader label="Gross %" field="gross_return_pct" />
                 <SortHeader label="Net %" field="net_return_pct" />
                 <SortHeader label="Days" field="days_to_expiry" />
-                <SortHeader label="Daily %" field="daily_return_pct" />
+                <SortHeader label="Spread" field="bid_ask_spread_cents" />
                 <SortHeader label="Ann. Excess %" field="annualized_excess_return_pct" />
                 <SortHeader label="$1K Slip" field="slippage_bps" />
                 <SortHeader label="$1K Impact" field="price_impact_bps" />
@@ -319,11 +319,24 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
                 >
                   {/* Market */}
                   <td className="px-3 py-2 max-w-[280px]">
-                    <div
-                      className="text-[11px] text-[var(--hl-text)] truncate"
-                      title={o.question}
-                    >
-                      {o.question}
+                    <div className="flex items-center gap-1">
+                      <a
+                        href={`https://polymarket.com/event/${o.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-[var(--hl-text)] truncate hover:text-[var(--hl-accent)] hover:underline"
+                        title={o.question}
+                      >
+                        {o.question}
+                      </a>
+                      <a
+                        href={`https://polymarket.com/event/${o.slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-shrink-0 text-[var(--hl-text-dim)] hover:text-[var(--hl-accent)]"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
                     </div>
                     <div className="text-[9px] text-[var(--hl-text-dim)]">
                       {new Date(o.end_date).toLocaleDateString('en-US', {
@@ -391,13 +404,18 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
                     {o.days_to_expiry}
                   </td>
 
-                  {/* Daily Return */}
+                  {/* Bid-Ask Spread */}
                   <td
-                    className={`px-3 py-2 font-mono text-[11px] ${returnColor(o.daily_return_pct * 100)}`}
+                    className={`px-3 py-2 font-mono text-[11px] ${
+                      o.bid_ask_spread_cents <= 1
+                        ? 'text-[var(--hl-green)]'
+                        : o.bid_ask_spread_cents <= 3
+                          ? 'text-[var(--hl-text-dim)]'
+                          : 'text-[var(--hl-yellow)]'
+                    }`}
+                    title="Bid-ask spread on the chosen side"
                   >
-                    {o.daily_return_pct < 1
-                      ? o.daily_return_pct.toFixed(3)
-                      : o.daily_return_pct.toFixed(1)}%
+                    {o.bid_ask_spread_cents.toFixed(1)}¢
                   </td>
 
                   {/* Annualized Excess */}
@@ -460,6 +478,7 @@ export function ScannerTable({ opportunities }: ScannerTableProps) {
       <div className="flex items-center gap-4 px-4 py-1.5 border-t border-[var(--hl-border)] text-[9px] text-[var(--hl-text-dim)]">
         <span>Sticker = Polymarket displayed price for chosen side</span>
         <span>Ask = real best ask from order book</span>
+        <span>Spread = bid-ask spread in cents</span>
         <span>$1K Slip = avg fill cost vs best ask for a $1,000 buy (basis points)</span>
         <span>$1K Impact = how much best ask moves after your order</span>
         <span className="text-[var(--hl-green)]">0bp = zero slippage</span>

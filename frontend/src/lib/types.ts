@@ -12,7 +12,8 @@ export interface ScannerOpportunity {
   days_to_expiry: number;
   annualized_net_return_pct: number;
   annualized_excess_return_pct: number;
-  daily_return_pct: number;
+  slug: string;
+  bid_ask_spread_cents: number;
   liquidity_usd: number;
   volume: number;
   slippage_bps: number;

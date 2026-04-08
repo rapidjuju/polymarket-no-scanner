@@ -28,6 +28,16 @@ class CLOBClient:
         except Exception:
             return None
 
+    def get_best_bid(self, book: dict) -> float | None:
+        """Extract the highest bid price from an order book response."""
+        bids = book.get("bids", [])
+        if not bids:
+            return None
+        try:
+            return max(float(b["price"]) for b in bids)
+        except (KeyError, ValueError, TypeError):
+            return None
+
     def get_best_ask(self, book: dict) -> float | None:
         """Extract the lowest ask price from an order book response."""
         asks = book.get("asks", [])

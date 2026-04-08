@@ -17,7 +17,8 @@ class ScannerOpportunity(BaseModel):
     days_to_expiry: int
     annualized_net_return_pct: float
     annualized_excess_return_pct: float
-    daily_return_pct: float = 0
+    slug: str = ""
+    bid_ask_spread_cents: float = 0
     liquidity_usd: float
     volume: float = 0
     # Order book impact for a $1K buy
