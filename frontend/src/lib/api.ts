@@ -1,4 +1,4 @@
-import type { NoScannerOpportunity } from './types';
+import type { ScannerOpportunity } from './types';
 
 const BASE = '/api';
 
@@ -8,4 +8,4 @@ async function fetchJSON<T>(path: string): Promise<T> {
   return res.json();
 }
 
-export const fetchScanner = () => fetchJSON<NoScannerOpportunity[]>('/scanner');
+export const fetchScanner = () => fetchJSON<ScannerOpportunity[]>('/scanner');

@@ -3,14 +3,15 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 
-class NoScannerOpportunity(BaseModel):
+class ScannerOpportunity(BaseModel):
     market_id: str
     question: str
     end_date: str
     category: str = ""
+    side: str = "NO"  # "YES" or "NO" — which cheap share to buy
     yes_sticker_price: float
     no_sticker_price: float
-    no_ask_price: float
+    ask_price: float
     gross_return_pct: float
     net_return_pct: float
     days_to_expiry: int

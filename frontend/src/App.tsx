@@ -1,14 +1,14 @@
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { ScannerTable } from './components/ScannerTable';
 import { fetchScanner } from './lib/api';
-import type { NoScannerOpportunity } from './lib/types';
+import type { ScannerOpportunity } from './lib/types';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 2, staleTime: 10000 } },
 });
 
 function Dashboard() {
-  const { data, isLoading, error } = useQuery<NoScannerOpportunity[]>({
+  const { data, isLoading, error } = useQuery<ScannerOpportunity[]>({
     queryKey: ['scanner'],
     queryFn: fetchScanner,
     refetchInterval: 30000,
@@ -24,7 +24,7 @@ function Dashboard() {
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-[var(--hl-green)]" />
           <span className="text-xs font-semibold tracking-wide text-[var(--hl-text)]">
-            POLYMARKET NO SCANNER
+            POLYMARKET SCANNER
           </span>
         </div>
         <span className="ml-auto text-[10px] text-[var(--hl-text-dim)]">

@@ -1,11 +1,12 @@
-export interface NoScannerOpportunity {
+export interface ScannerOpportunity {
   market_id: string;
   question: string;
   end_date: string;
   category: string;
+  side: string;
   yes_sticker_price: number;
   no_sticker_price: number;
-  no_ask_price: number;
+  ask_price: number;
   gross_return_pct: number;
   net_return_pct: number;
   days_to_expiry: number;
